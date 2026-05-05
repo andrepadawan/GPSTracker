@@ -12,10 +12,12 @@ function map_init(){
              //Removing + - buttons on mobile
             map.removeControl(map.zoomControl);
         }
+
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
+
         map.scrollWheelZoom.disable();
         map.invalidateSize()
         //Map operations finished

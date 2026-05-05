@@ -7,7 +7,8 @@ import logging
 import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from gps_module import GpsReader
+from RPiGPS.backend import gps_gpsd
+
 
 load_dotenv()
 
@@ -19,9 +20,17 @@ class Networking:
     def __init__(self):
         self.url_site = os.getenv("URL_SITO_GPS")
         self.device_token = os.getenv("DEVICE_TOKEN")
+
         if os.getenv("ENV") != "development":
-            self.gps_module = GpsReader()
-        else:
+            #Checking which module is used: hardware abstraction
+            if os.getenv("GPS_MODULE") == "at":
+                pass
+            if os.getenv("GPS_MODULE") == "gpsd":
+                self.gps_module = GpsReader()
+            else:
+                print(f"No module/unexpected specified in .env: {os.getenv('GPS_MODULE')}")
+
+        else: #in development mode, we use mock coordinates
             self._mock_dict_track = []
             self.gps_module = None
             with open("mock_gps_coordinates.txt", "r") as f:
