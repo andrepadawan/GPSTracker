@@ -7,7 +7,6 @@ import logging
 import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from RPiGPS.backend import gps_gpsd
 
 
 load_dotenv()
@@ -24,8 +23,11 @@ class Networking:
         if os.getenv("ENV") != "development":
             #Checking which module is used: hardware abstraction
             if os.getenv("GPS_MODULE") == "at":
-                pass
+                from RPiGPS.backend import gps_at
+                self.gps_module = AtReader();
+
             if os.getenv("GPS_MODULE") == "gpsd":
+                from RPiGPS.backend import gps_gpsd
                 self.gps_module = GpsReader()
             else:
                 print(f"No module/unexpected specified in .env: {os.getenv('GPS_MODULE')}")
@@ -63,6 +65,7 @@ class Networking:
 
         if self._thread:
             self._thread.join(timeout=10)
+
 
     def get_payload(self) -> dict:
         if os.getenv("ENV") != "development":
