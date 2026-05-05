@@ -3,6 +3,7 @@ import time
 import gps
 import threading
 import logging
+from Coordinates import Coordinates
 
 
 logger = logging.getLogger("gps_module")
@@ -11,17 +12,10 @@ logging.basicConfig(format="%(asctime)s — %(name)s — %(levelname)s — %(mes
 class GpsReader: 
 
     def __init__(self):
-        #Here I have several variables:
-        #The most important in order to acquire the position are:
-        self.latitude = 0.0
-        self.longitude = 0.0
-        self.speed = 0.0
-        self.track = None #track described from documentation as drift from true North
-        #Can be none if module cannot calculate it -> 0.0 as std would be wrong
-        #Quality of the signal:
-        self.fix_status = gps.STATUS_FIX
-
         #Management variable: lock, threading and event management
+        self.coord : Coordinates #però non accetta costruttore vuoto
+        self._coord_available: False
+
         self._lock = threading.Lock()
         self._thread = None
         self._stop_event = threading.Event()
@@ -56,13 +50,18 @@ class GpsReader:
         #Acquiring lock in order to write correctly without concurrency issues
         with self._lock:
             #For the sake of this project no other information is necessary
-            self.latitude = report["lat"] 
-            self.longitude = report["lon"]
-            self.speed = report["speed"]
-            self.fix_status = report["mode"]
-            self.track = report["track"]
-            #I can use device time since this function only triggered if fix>=2d, valid TPV            #showing coordinates for debug purposes
-            logger.info(f"Coordinates: lat: {self.latitude}, lon: {self.longitude}, fix:{self.fix_status}, track:{self.track}, time:{self.time_of_acquisition}")
+            self.coord = Coordinates(report["lon"], report["lat"],
+                                     report["speed"], report["fix"],
+                                     report["track"], report["time"])
+            self._coord_available = True #this is needed in case a call to get_coordinates is made before
+            #actually having the values
+
+            logger.info(f"Coordinates: {self.coord.toString()}")
+
+    def get_coordinates(self) -> Coordinates:
+        if self._coord_available:
+            with self._lock:
+                return self.coord
 
     def gps_loop(self):
 
@@ -110,7 +109,7 @@ class GpsReader:
 
             #Valid TPV report! Now let's see if we have enough satellites
             if report["mode"] >= gps.MODE_2D:
-                
+
                 self.write_coordinates(report)
         else:
             return

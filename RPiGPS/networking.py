@@ -7,6 +7,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from RPiGPS import Coordinates
 
 
 load_dotenv()
@@ -71,14 +72,7 @@ class Networking:
         if os.getenv("ENV") != "development":
             #So I'm in production
             with self._lock:
-                coord = {
-                    "lon":self.gps_module.longitude,
-                    "lat":self.gps_module.latitude,
-                    "speed":self.gps_module.speed,
-                    "fix_status":self.gps_module.fix_status,
-                    "track":self.gps_module.track,
-                    "time_of_acquisition":datetime.now(timezone.utc).isoformat()
-                }
+                coord = self.gps_module.get_coordinates()
             return coord
         else:
             #Going through another element of my cycle iterator
@@ -100,7 +94,7 @@ class Networking:
         while not self._stop_event.is_set():
             try:
                 #requests (session) automatically serializes a dict into json string
-                payload = self.get_payload()
+                payload = self.get_payload().model_dump() #get_payload() returns a Coordinates()
                 logger.info(f"Payload: {payload}")
                 session.post(self.url_site, json = payload, timeout=5)
                 logger.info(f"Coordinates posted to: {self.url_site}")
