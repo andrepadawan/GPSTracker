@@ -24,11 +24,10 @@ class Networking:
         if os.getenv("ENV") != "development":
             #Checking which module is used: hardware abstraction
             if os.getenv("GPS_MODULE") == "at":
-                from RPiGPS.backend import gps_at
+                from RPiGPS.backend.gps_at import AtReader
                 self.gps_module = AtReader();
-
-            if os.getenv("GPS_MODULE") == "gpsd":
-                from RPiGPS.backend import gps_gpsd
+            elif os.getenv("GPS_MODULE") == "gpsd":
+                from RPiGPS.backend.gps_gpsd import GpsReader
                 self.gps_module = GpsReader()
             else:
                 print(f"No module/unexpected specified in .env: {os.getenv('GPS_MODULE')}")
@@ -72,7 +71,7 @@ class Networking:
         if os.getenv("ENV") != "development":
             #So I'm in production
             with self._lock:
-                coord = self.gps_module.get_coordinates()
+                coord = self.gps_module.get_coordinates().model_dump() #get_payload() returns a Coordinates()
             return coord
         else:
             #Going through another element of my cycle iterator
@@ -94,7 +93,8 @@ class Networking:
         while not self._stop_event.is_set():
             try:
                 #requests (session) automatically serializes a dict into json string
-                payload = self.get_payload().model_dump() #get_payload() returns a Coordinates()
+                payload = self.get_payload()
+                if payload is None: continue #salta il post se on ha coordinate
                 logger.info(f"Payload: {payload}")
                 session.post(self.url_site, json = payload, timeout=5)
                 logger.info(f"Coordinates posted to: {self.url_site}")

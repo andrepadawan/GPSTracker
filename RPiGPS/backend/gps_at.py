@@ -18,12 +18,15 @@ class AtGNGGA():
     #classe custom per fare un parsing corretto di AT, proprietario di SIMCOM
     '''@page 227 AT command manual ->
     +CGNSINF: <GNSS run status>,<Fix status>,<UTC date &
-Time>,<Latitude>,<Longitude>,<MSL Altitude>,<Speed Over
-Ground>,<Course Over Ground>,<Fix
-Mode>,<Reserved1>,<HDOP>,<PDOP>,<VDOP>,<Reserved2>,<GN
-SS Satellites in View>,<GNSS Satellites Used>,<GLONASS Satellites
-Used>,<Reserved3>,<C/N0 max>,<HPA>,<VPA>
-OK'''
+    Time>,<Latitude>,<Longitude>,<MSL Altitude>,<Speed Over
+    Ground>,<Course Over Ground>,<Fix
+    Mode>,<Reserved1>,<HDOP>,<PDOP>,<VDOP>,<Reserved2>,<GN
+    SS Satellites in View>,<GNSS Satellites Used>,<GLONASS Satellites
+    Used>,<Reserved3>,<C/N0 max>,<HPA>,<VPA>
+    OK'''
+    #Mi serve questa custom class in modo da poter fare parsing tranquillo quando leggo dalla seriale
+    #con gli at commands. In futuro sarà semplice leggere un nuovo valore, perché c'è già struttura dati
+
     gnss_status: int
     fix_status: int
     utc_datetime: str
@@ -84,6 +87,7 @@ class AtReader():
         with self._lock:
             return self.coordinates
 
+
     def report(self, line):
         if(os.getenv("ENV")=="development"):
             print(line) #for debug purposes
@@ -93,8 +97,17 @@ class AtReader():
         payload = line.removeprefix(b'+CGNSINF:').split(b",")
         parts = [p.strip() for p in payload]
         with self._lock:
-            self.coordinates = AtGNGGA.csv_parts(parts)
+            self.coordinates = self.field_extractor(AtGNGGA.csv_parts(parts))
 
+    def field_extractor(self, raw: AtGNGGA) -> Coordinates:
+        return Coordinates(
+            longitude = raw.longitude,
+            latitude = raw.latitude,
+            speed = raw.speed_og,
+            fix_status = raw.fix_status,
+            track = raw.course_og, #at equivalent of "track", float 0-360deg
+            time_of_acquisition = raw.utc_datetime
+        )
 
 
     def gps_loop(self):
@@ -107,8 +120,7 @@ class AtReader():
                     while ser.is_open and not self._stop_event.is_set():
                         ser.write(b'AT+CGNSINF\r\n')
                         line = ser.readline()
-                        with self._lock:
-                            self.coordinates = self.report(line)
+                        self.report(line)
                 except serial.SerialException as e:
                     logger.info(f"Errors reading serial port: {ser.name}, {e} ")
 
