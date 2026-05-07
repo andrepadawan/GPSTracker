@@ -6,16 +6,16 @@ import logging
 from Coordinates import Coordinates
 
 
-logger = logging.getLogger("gps_module")
+logger = logging.getLogger("gps_gpsd")
 logging.basicConfig(format="%(asctime)s — %(name)s — %(levelname)s — %(message)s",
     level=logging.INFO)
 class GpsReader: 
 
     def __init__(self):
-        #Management variable: lock, threading and event management
-        self.coord : Coordinates #però non accetta costruttore vuoto
-        self._coord_available: False
 
+        self.coord : Coordinates | None = None
+        self._coord_available: False
+        # Management variable: lock, threading and event management
         self._lock = threading.Lock()
         self._thread = None
         self._stop_event = threading.Event()

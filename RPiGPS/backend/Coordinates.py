@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
 
 class Coordinates(BaseModel):
     longitude: float
@@ -7,8 +8,7 @@ class Coordinates(BaseModel):
     fix_status: int
     track: float
     time_of_acquisition: str
-
-
+    model_config = ConfigDict(frozen = True)
 
     '''
     "lon": self.gps_module.longitude,

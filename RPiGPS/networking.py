@@ -7,7 +7,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from RPiGPS import Coordinates
+from RPiGPS.backend import Coordinates
 
 
 load_dotenv()

@@ -1,15 +1,120 @@
+import os
 import threading
 import time
-from Coordinates import Coordinates
+from dotenv import load_dotenv
+import serial
+import logging
+from dataclasses import dataclass, fields
+from typing import Optional, get_type_hints
+
+from RPiGPS.backend.Coordinates import Coordinates
+
+logger = logging.getLogger("gps_at")
+logging.basicConfig(format="%(asctime)s — %(name)s — %(levelname)s — %(message)s",
+    level=logging.INFO)
+
+@dataclass(frozen=True, slots=True)
+class AtGNGGA():
+    #classe custom per fare un parsing corretto di AT, proprietario di SIMCOM
+    '''@page 227 AT command manual ->
+    +CGNSINF: <GNSS run status>,<Fix status>,<UTC date &
+Time>,<Latitude>,<Longitude>,<MSL Altitude>,<Speed Over
+Ground>,<Course Over Ground>,<Fix
+Mode>,<Reserved1>,<HDOP>,<PDOP>,<VDOP>,<Reserved2>,<GN
+SS Satellites in View>,<GNSS Satellites Used>,<GLONASS Satellites
+Used>,<Reserved3>,<C/N0 max>,<HPA>,<VPA>
+OK'''
+    gnss_status: int
+    fix_status: int
+    utc_datetime: str
+    latitude: float
+    longitude: float
+    msl_altitude: float
+    speed_og: float
+    course_og: float
+    fix_mode: int
+    reserved_1: str
+    HDOP: float
+    PDOP: float
+    VDOP: float
+    reserved_2: str
+    gnss_sat_view: int
+    gnss_sat_used: int
+    glonass_sat_used: int
+    reserved_3: str
+    c_no_max: int
+    HPA: int
+    VPA: int
+
+    @classmethod
+    def csv_parts(cls, parts: list[str]) -> "AtGNGGA":
+        names = [f.name for f in fields(cls)]
+        types = get_type_hints(cls)
+        if len(parts) != len(names):
+            raise ValueError(f"Expected {len(names)} arguments, got {len(parts)}")
+        kwargs = {n: types[n](p) for n,p in zip (names, parts)}
+        return cls(**kwargs)
+
 
 class AtReader():
 
     def __init__(self):
-        self.coordinates = Coordinates()
+        self.coordinates : Coordinates | None = None
+
         self._lock = threading.Lock()
         self._thread = None
         self._stop_event = threading.Event()
         self._connected_to_gps = False
+
+    def start(self):
+        if self._thread is None or not self._stop_event.is_set():
+            self._thread = threading.Thread(
+                target = self.gps_loop, name="gps_at_thread", daemon=True)
+            self._thread.start()
+            logger.info("Gps thread started")
+
+    def stop(self):
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join(timeout=10)
+        logger.info("Gps thread stopped")
+
+
+    def get_coordinates(self) -> Coordinates:
+        with self._lock:
+            return self.coordinates
+
+    def report(self, line):
+        if(os.getenv("ENV")=="development"):
+            print(line) #for debug purposes
+        #checking first
+        if not line.startswith(b'+CGNSINF:'):
+            return None
+        payload = line.removeprefix(b'+CGNSINF:').split(b",")
+        parts = [p.strip() for p in payload]
+        with self._lock:
+            self.coordinates = AtGNGGA.csv_parts(parts)
+
+
+
+    def gps_loop(self):
+        while not self._stop_event.is_set():
+            #inside di external while so we can manage reconnections
+            ser = serial.Serial("/dev/ttyS0", timeout=1) #potrei mettere 0 visto che sono in un thread separato, però
+            ser.write(b'AT+CGNSPWR=1\r\n')
+            if(ser.read_until(b'OK')):
+                try:
+                    while ser.is_open and not self._stop_event.is_set():
+                        ser.write(b'AT+CGNSINF\r\n')
+                        line = ser.readline()
+                        with self._lock:
+                            self.coordinates = self.report(line)
+                except serial.SerialException as e:
+                    logger.info(f"Errors reading serial port: {ser.name}, {e} ")
+
+                finally:
+                    ser.write(b'AT+CGNSPWR=0\r\n')
+                    ser.close()
 
 
 
