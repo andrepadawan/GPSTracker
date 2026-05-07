@@ -45,7 +45,6 @@ class Networking:
         self._stop_event = threading.Event()
 
     def start(self):
-
         if self._thread is not None:
             logger.info("Thread networking già in esecuzione")
             return
@@ -69,8 +68,11 @@ class Networking:
     def get_payload(self) -> dict|None:
         if os.getenv("ENV") != "development":
             #So I'm in production
-            coord = self.gps_module.get_coordinates().model_dump() #get_payload() returns a Coordinates()
-            return coord
+            coord = self.gps_module.get_coordinates() #get_payload() returns a Coordinates()
+            if coord is None:
+                return None
+            else:
+                return coord.model_dump()
         else:
             #Going through another element of my cycle iterator
             logger.info(f"Mock coordinates sent")
