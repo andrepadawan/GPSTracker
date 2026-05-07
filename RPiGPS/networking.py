@@ -42,7 +42,6 @@ class Networking:
                 self._mock_iter = itertools.cycle(self._mock_dict_track)
 
         self._thread = None
-        self._lock = threading.Lock()
         self._stop_event = threading.Event()
 
     def start(self):
@@ -67,16 +66,15 @@ class Networking:
             self._thread.join(timeout=10)
 
 
-    def get_payload(self) -> dict:
+    def get_payload(self) -> dict|None:
         if os.getenv("ENV") != "development":
             #So I'm in production
-            with self._lock:
-                coord = self.gps_module.get_coordinates().model_dump() #get_payload() returns a Coordinates()
+            coord = self.gps_module.get_coordinates().model_dump() #get_payload() returns a Coordinates()
             return coord
         else:
             #Going through another element of my cycle iterator
             logger.info(f"Mock coordinates sent")
-            copy = {**next(self._mock_iter), "timestamp":datetime.now(timezone.utc).isoformat()}
+            copy = {**next(self._mock_iter), "time_of_acquisition":datetime.now(timezone.utc).isoformat()}
             return copy
 
 
@@ -90,14 +88,19 @@ class Networking:
             {"Authorization": f"Bearer {self.device_token}",
              #Content type ->   automatically set as app.../json if json=dict in requests.post
               "Content-Type": "application/json"})
+
         while not self._stop_event.is_set():
+            #requests (session) automatically serializes a dict into json string
+            payload = self.get_payload()
+            if payload is None:
+                self._stop_event.wait(5)
+                continue #salta il post se on ha coordinate (no fix)
+            logger.info(f"Payload: {payload}")
+
             try:
-                #requests (session) automatically serializes a dict into json string
-                payload = self.get_payload()
-                if payload is None: continue #salta il post se on ha coordinate
-                logger.info(f"Payload: {payload}")
                 session.post(self.url_site, json = payload, timeout=5)
                 logger.info(f"Coordinates posted to: {self.url_site}")
+
             except requests.exceptions.ConnectionError:
                 
                 logger.info("Connection lost")
