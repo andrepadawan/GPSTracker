@@ -8,3 +8,5 @@ requirements.in
 /include
 /lib
 pyvenv.cfg
+
+temp_test/
