@@ -99,7 +99,7 @@ class AtReader():
         if not line.startswith(b'+CGNSINF:'):
             return None
         payload = line.removeprefix(b'+CGNSINF:').split(b",")
-        parts = [p.strip() for p in payload]
+        parts = [p.strip().decode() for p in payload]
         with self._lock:
             self.coordinates = self.field_extractor(AtGNGGA.csv_parts(parts))
 
