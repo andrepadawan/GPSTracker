@@ -12,7 +12,7 @@ Italian version: [README_IT.md](README_IT.md).
 ## Stack
 
 Raspberry Pi (Zero 2 W) + gpsd, Python 3.9, FastAPI, Pydantic v2, Jinja2, Leaflet 1.9. 
-Deployed on PythonAnywhere.
+Deployed on Railway.
 HTTP Basic auth for the admin, bearer token for the device.
 
 ## Layout
@@ -53,7 +53,6 @@ Work in progress. What's next, roughly in order:
 
 - LED status on the Pi (service active / idle)
 - small test suite for `ScheduleManager` and `MapManager`
-- android app
 
 ## License
 

@@ -6,13 +6,13 @@
 Tracker GPS live per navette eventi. Un Raspberry con modulo GPS manda le sue coordinate a un server con FastAPI, che la mostra
 in una mappa Leaflet (standalone o embedded) comprensiva di POI (Punti di interesse). Un pannello di amministrazione (cui si accede dietro autenticazione)
 imposta gli orari in cui la posizione viene esposta sulle mappe e i POI. Fuori dagli orari impostati, la chiamata all'endpoint `/coordinates` risponde con 
-`notactive`, permettendo al dispositivo di rimanere acceso senza esporre la posizione.
+`notactive`, permettendo al dispositivo di rimanere acceso senza esporre pubblicamente la posizione.
 
 Versione inglese [README.md](README.md)
 
 ## Stack hardware
 Raspberry Pi (Zero 2 W) + gpsd, Python 3.9, FastAPI, Pydantic v2, Jinja2, Leaflet 1.9. 
-Deployed on PythonAnywhere.
+Deployed su Railway.
 HTTP Basic auth per l'amministratore, bearer token per il dispositivo.
 
 ##Layout
@@ -51,14 +51,8 @@ Su Mac non c'è `gpsd`, con `ENV=development` il codice legge `mock_gps_coordina
 Ancora in corso.
 Seguiranno:
 
-
-- Cursore che mostra posizione navetta (necessario orientamento da gps)
-- Miglioramenti UI (il pannello admin sembra un blog del 1997)
-- ruff + PEP 8 cleanup 
 - LED su Pi (attivo / disattivato)
-- Led su admin accanto al turno attivo
-- Test per le classi python
-- App android
+- Piccole test suites per le classi python
 
 ## License
 

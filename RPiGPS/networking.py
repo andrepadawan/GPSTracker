@@ -95,8 +95,8 @@ class Networking:
             #requests (session) automatically serializes a dict into json string
             payload = self.get_payload()
             if payload is None:
-                self._stop_event.wait(5)
                 logger.info(f"Payload none")
+                self._stop_event.wait(10) #altrimenti fa richieste di continuo
                 continue #salta il post se on ha coordinate (no fix)
             logger.info(f"Payload: {payload}")
 
@@ -105,7 +105,7 @@ class Networking:
                 logger.info(f"Coordinates posted to: {self.url_site}")
 
             except requests.exceptions.ConnectionError:
-                
+
                 logger.info("Connection lost")
 
             except requests.exceptions.Timeout:
@@ -114,8 +114,8 @@ class Networking:
 
             except Exception as e:
 
-                logger.info(f"Errore imprevisto: {e}")
-            
+                logger.exception(f"Connection lost: {type(e).__name__}: {e}")
+
             #Waiting using .wait so our function still responds to stop events
             self._stop_event.wait(8)
 
